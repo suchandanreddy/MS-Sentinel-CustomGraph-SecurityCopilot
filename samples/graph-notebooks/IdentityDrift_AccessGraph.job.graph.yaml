@@ -1,0 +1,23 @@
+jobName: IdentityDrift_AccessGraph
+jobType: GraphNotebook
+jobPath: IdentityDrift_AccessGraph.ipynb
+jobDescription: ''
+scheduleConfig:
+  isEnabled: true
+  startTime: '2026-04-10T22:40:00.000+00:00'
+  repeatFrequency: Days
+  interval: 1
+computeInfo:
+  nodeSize: medium
+  driverCores: 8
+  driverMemory: 56GB
+  executorCores: 8
+  executorMemory: 56GB
+  isExecutorAutoScale: false
+  executorMinCount: 3
+  executorMaxCount: 3
+  friendlyName: medium pool (32 vCores)
+inputTables: []
+outputTables: []
+runtimeArgs: []
+isDisabled: false

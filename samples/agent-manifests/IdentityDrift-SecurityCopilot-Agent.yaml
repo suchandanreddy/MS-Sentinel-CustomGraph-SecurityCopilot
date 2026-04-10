@@ -1,0 +1,435 @@
+Descriptor:
+  Name: IdentityDriftGraphInvestigationAgent
+  Description: >-
+    Interactive Security Copilot agent that investigates high-risk identities
+    accessing infrastructure with critical alerts. Uses IdentityDrift custom
+    graph REST API. Re-queries on every request (never reuses results) for
+    security and accuracy.
+  DisplayName: IdentityDrift Graph Investigation Agent
+  CatalogScope: UserWorkspace
+  Enabled: true
+  Prerequisites:
+    - IdentityDriftGraphInvestigationAgent
+  Authorization:
+    Type: AADDelegated
+    EntraScopes: https://purview.azure.net/.default
+  SupportedAuthTypes:
+    - AADDelegated
+  Icon: ''
+SkillGroups:
+  - Format: Agent
+    Skills:
+      - Name: IdentityDriftGraphInvestigationAgent
+        DisplayName: IdentityDrift Graph Investigation Agent
+        Description: >-
+          Interactive agent that accepts riskIdentityId and graphName from
+          natural language input, queries the IdentityDrift Custom Graph
+          Instance via QueryGraphRestAPI, and returns infrastructure workloads
+          with high-risk access patterns and critical alerts. Follows
+          fail-closed security-first design: re-queries on every request, never
+          reuses results from previous turns.
+        Interfaces:
+          - InteractiveAgent
+        Inputs:
+          - Name: UserRequest
+            Description: >-
+              The user's natural language request containing riskIdentityId
+              (email) and optional graphName. Example: "investigate user
+              u1291@contoso.onmicrosoft.com in graph IdentityDrift_AccessGraph
+              for infrastructure access with critical alerts"
+            DefaultValue: ''
+            Required: true
+          - Name: riskIdentityId
+            Description: >
+              High-risk identity email extracted from the CURRENT user request.
+              Must never be reused across turns.
+            DefaultValue: ""
+            Required: false
+        SuggestedPrompts:
+          # Starter Prompts (visible at agent initialization)
+          - Prompt: Investigate user u1291@contoso.onmicrosoft.com for high-risk infrastructure access
+            Title: High-Risk Identity Investigation
+            Personas:
+              - 4  # Identity Admin
+            IsStarterAgent: true
+          - Prompt: Show me infrastructure resources accessed by high-risk identities with critical alerts
+            Title: Threat Access Patterns
+            Personas:
+              - 1  # SCO Analyst
+              - 3  # IT Admin
+            IsStarterAgent: true
+          - Prompt: What are the key risk indicators for this high-risk identity's infrastructure access?
+            Title: Risk Assessment Overview
+            Personas:
+              - 0  # CISO
+              - 4  # Identity Admin
+            IsStarterAgent: true
+          - Prompt: Identify all workloads accessed by a high-risk identity with critical alerts
+            Title: Infrastructure Access Details
+            Personas:
+              - 1  # SCO Analyst
+              - 5  # Data Security Admin
+            IsStarterAgent: true
+          # Follow-on Prompt Suggestions (generated dynamically after investigation)
+          - Prompt: What alert types were triggered on the accessed infrastructure?
+          - Prompt: Which source IPs accessed these resources and when?
+          - Prompt: Show me the activities performed on each accessed workload
+          - Prompt: Are there any privilege escalation alerts in the results?
+          - Prompt: Which workloads had the most access events from this identity?
+          - Prompt: What is the confidence level for each detected alert?
+          - Prompt: Provide a summary of recommended actions for this investigation
+        Settings:
+          OrchestratorSkill: DefaultAgentOrchestrator
+          Instructions: >-
+            # ========== CRITICAL RULE — READ BEFORE EVERY STEP ========== Every
+            prompt is a completely independent request. You MUST re-extract
+            riskIdentityId from the CURRENT message ONLY. Do NOT read,
+            reference, or reuse any tool call results, query outputs, or
+            variable values from any previous turn in this session. The value of
+            riskIdentityId MUST come ONLY from the current UserRequest text. If
+            the current message contains a different riskIdentityId than the
+            previous turn, you MUST use the new riskIdentityId and discard the
+            previous one entirely. Treat each prompt as if this is the first
+            message in a brand new session. Use default graphName:
+            IdentityDrift_AccessGraph (no customization).
+
+            # ========== HARD EXECUTION CONTRACT (Fail-Closed) ========== For
+            every new UserRequest, you MUST execute QueryGraphRestAPI in this
+            turn before producing any investigation output. If QueryGraphRestAPI
+            is not executed in the current turn for any reason, respond exactly
+            with: "I could not execute a fresh graph query for this request.
+            Please retry." Never use prior-turn tool outputs, prior-turn
+            variable values, or remembered results to answer the current
+            request. Only tool output produced in the current turn is
+            authoritative.
+
+            # ========== Step 0: Parse user input from natural language
+            ========== Run this step every single time a new prompt is received.
+            Do NOT reuse or return any cached response from a previous prompt.
+            Always treat every prompt as a fresh request.
+
+            This agent investigates ONE scenario only: "What infrastructure did
+            a high-risk identity access, and what critical/high alerts were
+            triggered on those workloads?"
+
+            The user may provide inputs in conversational formats such as:
+              - "investigate u1291@contoso.onmicrosoft.com"
+              - "check high-risk identity u1291@contoso.onmicrosoft.com"
+              - "what infrastructure did u1291@contoso.onmicrosoft.com access"
+              - "show alerts triggered by u1291@contoso.onmicrosoft.com"
+
+            Extracting riskIdentityId (REQUIRED):
+              - Scan the user message for any of these patterns
+              (case-insensitive):
+                  "riskIdentityId: <value>"
+                  "user: <value>"
+                  "identity: <value>"
+                  "mail: <value>"
+                  "email: <value>"
+                  "for user <value>"
+                  "investigate <value>"
+                  "check <value>"
+                  Any string matching the pattern *@*.* (email format)
+              - Once found, set riskIdentityId = extracted value.
+              - Preserve ALL characters: dots (.), hyphens (-), underscores (_),
+              @ symbols.
+              - Do NOT modify, trim, encode, or normalize the value in any way.
+
+            Validation after extraction:
+              - If riskIdentityId extracted successfully: set riskIdentityId =
+              extracted value. PROCEED to Step 1.
+              - If riskIdentityId NOT found: respond with:
+                "Please provide the email address of the high-risk identity you
+                want to investigate.
+                Example: Investigate u1291@contoso.onmicrosoft.com"
+              STOP and do NOT proceed further.
+
+            graphName is ALWAYS: "IdentityDrift_AccessGraph" (no variation)
+
+            Before proceeding to Step 1, confirm extracted values to the user:
+            "Got it! Investigating High-Risk Identity:
+              - Risk Identity: <riskIdentityId>
+              - Graph: IdentityDrift_AccessGraph
+              - Scenario: Infrastructure access with critical/high alerts"
+
+            # ========== Step 0.5: Anti-cache guard ========== Do NOT reuse
+            results from any previous interaction in this session. Always
+            execute Steps 1 through 4 fresh for every new user prompt.
+            
+            CRITICAL: Append timestamp and random UUID to requestId to force
+            the platform to recognize this as a completely new request and
+            execute the tool fresh. This prevents Security Copilot from
+            returning cached results from previous identical queries.
+
+            # ========== Step 1: Read the inputs ========== Read the resolved
+            values from Step 0:
+              - riskIdentityId: the value extracted in Step 0
+              - graphName: "IdentityDrift_AccessGraph" (hardcoded, no variation)
+
+            # ========== Step 1.5: Execute Single Fixed Query ========== You
+            MUST execute a fresh QueryGraphRestAPI call for this current turn.
+            This is NON-NEGOTIABLE.
+
+            Do NOT use any prior results. Do NOT skip this step.
+
+            This agent uses ONE query for all investigations: Specific high-risk
+            identity → infrastructure access → critical/high alerts
+
+            Call QueryGraphRestAPI with exactly: {
+              "query": "MATCH (i:Identity)-[r1:AccessedInfrastructure]->(w:Workload), (a:Alert)-[r2:DetectedOn]->(w) WHERE i.IdentityId = '{{riskIdentityId}}' AND a.AlertSeverity IN ['High', 'Critical'] RETURN i, r1, w, r2, a LIMIT 10",
+              "queryLanguage": "GQL",
+              "requestId": "{{UserRequest}}_{{TIMESTAMP}}_{{RANDOM_UUID}}"
+            }
+
+            Preserve riskIdentityId exactly as provided. Do NOT encode, escape,
+            or modify.
+
+            If QueryGraphRestAPI execution is skipped, fails, or returns no
+            current-turn result, respond exactly with: "I could not execute a
+            fresh graph query for this request. Please retry." and STOP
+            immediately.
+
+            If the API call returns zero results, respond with: "No high-risk
+            infrastructure access patterns found for identity
+            {{riskIdentityId}}. This may mean: - Identity has no recent
+            infrastructure access - No critical/high severity alerts on accessed
+            workloads - Identity not yet in graph (may appear after 24-48 hours)
+            Please verify the email address is correct and try again." and STOP.
+            Do NOT render empty response.
+
+            # ========== Step 2: Parse Results ========== RawData.Rows[0].Cols
+            is a flat array. Every 5 consecutive items represent one complete
+            result: (identity node, AccessedInfrastructure edge, workload node,
+            DetectedOn edge, alert node).
+
+            FILTER: Only include groups where the Identity node's IdentityId
+            exactly matches the riskIdentityId provided by user. Skip any groups
+            that don't match.
+
+            Each Col.Value is a serialized JSON string. You MUST parse each
+            Col.Value as JSON before attempting to extract any field from it.
+
+            For each group of 5, extract the following fields:
+
+            From Col[i+0] — i node (Identity):
+              Parse Col[i+0].Value as JSON, then extract:
+              - IdentityId       =>  display as "Risk Identity"
+              (show value as-is)
+              - RiskLevelAggregated  =>  display as "Risk Level" (show value
+              as-is)
+
+            From Col[i+1] — r1 edge (AccessedInfrastructure):
+              Parse Col[i+1].Value as JSON, then extract:
+              - EventCount       =>  display as "Access Events"
+              (show value as-is)
+              - SourceIPCount    =>  display as "Source IPs" (show value as-is;
+              empty if missing)
+              - ActivityTypes    =>  display as "Activities" (show value as-is;
+              empty if missing)
+              - LastActivity     =>  display as "Last Access" (extract date
+              portion only; format YYYY-MM-DD HH:MM:SS)
+
+            From Col[i+2] — w node (Workload):
+              Parse Col[i+2].Value as JSON, then extract:
+              - WorkloadName  =>  display as "Infrastructure Resource" (show
+              value as-is)
+              - WorkloadType  =>  display as "Resource Type" (show value as-is)
+
+            From Col[i+3] — r2 edge (DetectedOn):
+              Parse Col[i+3].Value as JSON, then extract:
+              - DetectionCount   =>  display as "Detections" (show value as-is;
+              empty if missing)
+              - LastDetection    =>  display as "Last Detected" (extract date
+              portion only; format YYYY-MM-DD HH:MM:SS)
+
+            From Col[i+4] — a node (Alert):
+              Parse Col[i+4].Value as JSON, then extract:
+              - AlertSeverity    =>  display as "Severity" (show value as-is)
+              - DisplayName      =>  display as "Alert Type" (show value as-is)
+              - AlertType        =>  display as "Threat Category" (show value
+              as-is)
+              - ConfidenceLevel  =>  display as "Confidence" (show value as-is;
+              empty if missing)
+
+            Rules for missing or null fields:
+              - If a field is missing from the parsed JSON or its value is null,
+              display an empty cell.
+              - Do NOT skip any row or group because of missing fields.
+              - Always include every row in the output, even if most cells are
+              empty.
+
+            # ========== Step 3: Render Response ========== Before rendering,
+            verify current-turn tool output exists. If current-turn tool output
+            is missing, respond exactly with: "I could not execute a fresh graph
+            query for this request. Please retry." and stop.
+
+            Call the ComposeFinalResponse tool with the following rendering
+            instructions: 1. Render all content below exactly as-is. Do not
+            reformat or reorder. 2. Render all markdown hyperlinks as clickable
+            links. Do NOT strip or remove any link. 3. Do NOT add any extra
+            text, explanation, summary, or commentary beyond what is specified.
+            4. Render all tables with proper markdown table formatting.
+
+            Output the following sections in order:
+
+            Section 1 - Investigation Summary: ## 🎯 High-Risk Identity
+            Infrastructure Access Investigation
+
+            **Investigated Identity:** {{IdentityId}} (Risk Level:
+            {{RiskLevelAggregated}})
+
+            **Graph Status:** Fresh query executed this turn
+
+            Section 2 - Infrastructure Access with Alerts: ## 📊 Infrastructure
+            Workloads with Critical/High Alerts
+
+            | Risk Identity | Risk Level | Infrastructure | Type | Events |
+            Activities | IPs | Last Access | Alert Type | Severity | Threat
+            Category | Confidence | Last Detected | | --- | --- | --- | --- |
+            --- | --- | --- | --- | --- | --- | --- | --- | --- | | {{IdentityId
+            row 1}} | {{Risk Level row 1}} | {{Infrastructure Resource row 1}} |
+            {{Resource Type row 1}} | {{Access Events row 1}} | {{Activities row
+            1}} | {{Source IPs row 1}} | {{Last Access row 1}} | {{Alert Type
+            row 1}} | {{Severity row 1}} | {{Threat Category row 1}} |
+            {{Confidence row 1}} | {{Last Detected row 1}} | | {{IdentityId row
+            2}} | {{Risk Level row 2}} | {{Infrastructure Resource row 2}} |
+            {{Resource Type row 2}} | {{Access Events row 2}} | {{Activities row
+            2}} | {{Source IPs row 2}} | {{Last Access row 2}} | {{Alert Type
+            row 2}} | {{Severity row 2}} | {{Threat Category row 2}} |
+            {{Confidence row 2}} | {{Last Detected row 2}} |
+
+            (one row per result group parsed)
+
+            Section 3 - Risk Assessment: ## ⚠️ Risk Assessment
+
+            **Key Findings:** - X infrastructure resources accessed by this
+            high-risk identity - Y critical/high severity alerts triggered on
+            these workloads - Z access events from N unique source IPs
+
+            **Investigation Indicators:** - [ ] Multiple source IPs = potential
+            lateral movement - [ ] Privilege escalation alerts = immediate
+            escalation risk - [ ] API activities + infrastructure access = data
+            exfiltration risk - [ ] Access to sensitive infrastructure + alerts
+            = confirmed threat
+
+            Section 4 - Recommended Actions: ## 🔧 Recommended Actions
+
+            | Action | Details | Priority | | --- | --- | --- | | Revoke
+            Sessions | Terminate all active sessions for this identity | P0 | |
+            Reset Password | Force password reset after audit | P1 | | Isolate
+            Resources | Isolate accessed infrastructure workloads | P1 | | Alert
+            Review | Investigate each critical alert in detail | P1 | | Query
+            Logs | Use SigninLogs/AuditLogs to corroborate findings | P1 |
+        ChildSkills:
+          - QueryGraphRestAPI
+  - Format: API
+    Skills:
+      - Name: QueryGraphRestAPI
+        DisplayName: QueryGraphRestAPI
+        Description: >-
+          Query IdentityDrift graph for high-risk identity infrastructure access
+          patterns with critical alerts
+        Inputs:
+          - Name: graphName
+            Description: Name of custom graph (IdentityDrift_AccessGraph)
+            DefaultValue: ''
+            Required: true
+    Settings:
+      OpenApiSpecEmbedded: |
+        openapi: 3.0.0
+        info:
+          title: IdentityDrift Custom Graph Query API
+          description: >-
+            Query the IdentityDrift_AccessGraph to investigate high-risk
+            identities accessing infrastructure workloads with high/critical
+            severity alerts.
+          version: "1.0"
+        servers:
+          - url: https://api.securityplatform.microsoft.com
+        paths:
+          /graphs/custom-graph-instances/{graphName}/query:
+            post:
+              operationId: QueryGraphRestAPI
+              summary: >-
+                Query IdentityDrift graph for high-risk identity infrastructure
+                access patterns with critical alerts
+              parameters:
+                - name: graphName
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                  description: >-
+                    Name of custom graph (IdentityDrift_AccessGraph)
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        query:
+                          type: string
+                          description: >-
+                            GQL MATCH/WHERE/RETURN query for infrastructure
+                            access investigation
+                        queryLanguage:
+                          type: string
+                          default: GQL
+                        requestId:
+                          type: string
+                          description: Unique request identifier for tracing
+                      required:
+                        - query
+                        - queryLanguage
+                    example:
+                      query: >-
+                        MATCH
+                        (i:Identity)-[r1:AccessedInfrastructure]->(w:Workload),
+                        (a:Alert)-[r2:DetectedOn]->(w) WHERE
+                        i.IdentityId =
+                        'u1291@contoso.onmicrosoft.com' AND a.AlertSeverity
+                        IN ['High', 'Critical'] RETURN i, r1, w, r2, a LIMIT
+                        10
+                      queryLanguage: GQL
+                      requestId: IdentityDrift_AccessGraph|u1291@contoso.onmicrosoft.com|investigation-001
+              responses:
+                "200":
+                  description: Query executed successfully
+                "401":
+                  description: Unsuccessful authentication
+                "403":
+                  description: Forbidden - insufficient permissions
+                "408":
+                  description: Query timeout
+                "500":
+                  description: Internal server error
+AgentDefinitions:
+  - Name: IdentityDriftGraphInvestigationAgent
+    DisplayName: IdentityDrift Graph Investigation Agent
+    Description: >-
+      Interactive Security Copilot agent that investigates high-risk identities
+      accessing infrastructure with critical alerts. Uses IdentityDrift custom
+      graph REST API. Re-queries on every request (never reuses results) for
+      security and accuracy.
+    Product: Custom
+    Publisher: Custom
+    Settings:
+      - Name: UserRequest
+        Description: >-
+          The user's natural language request containing riskIdentityId (email)
+          and optional graphName. Example: "investigate user
+          u1291@contoso.onmicrosoft.com in graph IdentityDrift_AccessGraph for
+          infrastructure access with critical alerts"
+        Required: true
+    Triggers:
+      - Name: DefaultTrigger
+        DefaultPollPeriodSeconds: 0
+        ProcessSkill: >-
+          IdentityDriftGraphInvestigationAgent.IdentityDriftGraphInvestigationAgent
+    PromptSkill: IdentityDriftGraphInvestigationAgent.IdentityDriftGraphInvestigationAgent
+    RequiredSkillsets:
+      - IdentityDriftGraphInvestigationAgent
+    PreviewState: Private
+    PublisherSource: Custom
+    AgentSingleInstanceConstraint: None
