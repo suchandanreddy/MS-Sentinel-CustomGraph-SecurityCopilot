@@ -231,9 +231,3 @@ Step 6: Returns structured findings + recommended actions
 
 ```
 
-## 🔗 Related Resources
-
-- **[Microsoft Sentinel Custom Graphs](https://learn.microsoft.com/en-us/azure/sentinel/datalake/create-custom-graph-rest-api)** – Official documentation
-- **[Graph REST API Reference](https://learn.microsoft.com/en-us/azure/sentinel/datalake/graph-rest-api)** – API specification
-- **[Security Copilot Agents](https://learn.microsoft.com/en-us/copilot/security/developer/interactive-agents-overview)** – Agent development guide
-- **[Microsoft Sentinel Labs](https://github.com/suchandanreddy/Microsoft-Sentinel-Labs)** – Data source configurations
