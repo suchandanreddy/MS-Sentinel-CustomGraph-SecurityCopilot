@@ -9,13 +9,11 @@ High-Risk User Identity
 Query Custom Graph
          ↓
 Find: Identity → AccessedInfrastructure → Workload
-                                            ↓
-                                    DetectedOn → Alert
+                                            ↑
+                                Alert → DetectedOn
          ↓
 Return: Identity + Infrastructure Access Pattern + Alert Details
 ```
-
----
 
 ## Agent Overview
 
@@ -28,8 +26,6 @@ Return: Identity + Infrastructure Access Pattern + Alert Details
 
 **Use Case:** Security incidents, access reviews, compromise investigations
 
----
-
 ## Prerequisites
 
 1. **Custom graph built** ([03 - Build Custom Graph](./03-build-custom-graph.md))
@@ -39,7 +35,6 @@ Return: Identity + Infrastructure Access Pattern + Alert Details
 3. **Security Copilot access**
    - Account with Security Operator role (required to create and deploy agents)
 
----
 
 ## Step 1: Prepare Agent YAML
 
@@ -60,8 +55,6 @@ The agent is defined in: [samples/agent-manifests/IdentityDrift-SecurityCopilot-
 
 ![](../Images/Publish-Agent.png)
 
----
-
 ## Step 3: Set up Agent
 
 1. Navigate to **Agents**
@@ -75,7 +68,7 @@ The agent is defined in: [samples/agent-manifests/IdentityDrift-SecurityCopilot-
 
 **Question:**
 ```
-Investigate impact of high-risk identity u1291@contoso.onmicrosoft.com
+Investigate impact of high-risk identity u2847@contoso.onmicrosoft.com
 Show me what infrastructure was accessed and what alerts were triggered
 ```
 
@@ -97,9 +90,12 @@ Show me what infrastructure was accessed and what alerts were triggered
 **Sample Response:**
 
 ![](../Images/Graph-Investigation-Agent-Output-1.png)
-![](../Images/Graph-Investigation-Agent-Output-2.png)
 
----
+*Click to expand the Infrastructure Workloads table for detailed access patterns and critical/high alerts, or Export results to Excel*
+
+![](../Images/Graph-Investigation-Agent-Output-3.png)
+
+![](../Images/Graph-Investigation-Agent-Output-2.png)
 
 ## Step 4: Alert Details in Output
 
@@ -132,7 +128,6 @@ The agent specifically extracts and displays **alert information** based on Grap
 
 All these fields populate the **Infrastructure Access table** to provide complete investigation context including **Who** accessed **What** and **What Alerts** were triggered.
 
----
 
 ## Customization: Add Device Access
 
@@ -149,8 +144,6 @@ LIMIT 10
 ```
 
 Then parse groups and add device info (DeviceName, ProcessCount) to output table.
-
----
 
 ## Related Resources
 

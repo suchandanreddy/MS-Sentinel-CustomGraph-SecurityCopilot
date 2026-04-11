@@ -118,7 +118,7 @@ graph = Graph.build(graph_spec)
 ```json
 {
   "Identity": {
-    "IdentityId": "u1291@contoso.onmicrosoft.com",
+    "IdentityId": "u2847@contoso.onmicrosoft.com",
     "RiskLevelAggregated": "High",
     "LastActivity": "2025-04-09T14:35:00Z"
   },
@@ -217,7 +217,7 @@ graph = Graph.build(graph_spec)
 
 ```
 1. ANALYST INPUT
-   "Investigate user u1291@contoso.onmicrosoft.com 
+   "Investigate user u2847@contoso.onmicrosoft.com 
     for infrastructure access with critical alerts"
 
 2. AGENT PARSING

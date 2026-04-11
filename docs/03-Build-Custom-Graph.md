@@ -22,7 +22,36 @@ A custom graph consists of:
 
 For IdentityDrift investigation, we'll build a graph showing relationships between identities, the systems they accessed, devices they used, processes they executed, and security alerts they triggered or that detected on systems.
 
----
+### 🔑 Key Components
+
+#### Graph Nodes (4 Types)
+
+| Node | Represents | Example |
+|------|-----------|---------|
+| **Identity** | Azure AD users | u2847@contoso.onmicrosoft.com |
+| **Workload** | Apps & infrastructure | Azure Portal, prod-aks-eastus |
+| **Device** | Client devices | WIN-DESKTOP-CONTOSO-401 |
+| **Alert** | Security detections | PrivilegeEscalation, MalwareBlocked |
+
+#### Graph Edges (6 Types)
+
+| Edge | Source → Target | Represents |
+|------|-----------------|-----------|
+| **AccessTo** | Identity → Workload | APP sign-in |
+| **AccessedInfrastructure** | Identity → Workload | Infrastructure access (Kubernetes, etc.) |
+| **UsedDevice** | Identity → Device | Device usage |
+| **ExecutedProcess** | Identity → Process | Process execution on device |
+| **TriggeredAlert** | Identity → Alert | Identity triggered alert |
+| **DetectedOn** | Alert → Workload | Alert detected on infrastructure |
+
+#### Data Sources (Sentinel Data Lake)
+
+| Table | Source | Key Use |
+|-------|--------|---------|
+| **SigninLogs_ID_KQL_CL** | Entra ID | Identity → Workload (app access) |
+| **CommonSecurity_ID_KQL_CL** | IdentityDrift | Identity → Workload (infrastructure) |
+| **DeviceProcessEvents_KQL_CL** | Defender for Endpoint | Process execution patterns |
+| **SecurityAlerts_KQL_CL** | Defender for Cloud | Alerts & detections |
 
 ## Step 1: Understand the IdentityDrift Table Schema
 
@@ -32,7 +61,7 @@ For IdentityDrift investigation, we'll build a graph showing relationships betwe
 **Key columns:**
 ```
 TimeGenerated              - Event timestamp
-UserPrincipalName         - Identity accessing (e.g., u1291@contoso.onmicrosoft.com)
+UserPrincipalName         - Identity accessing (e.g., u2847@contoso.onmicrosoft.com)
 AppDisplayName            - Target application (e.g., Azure Portal, Microsoft Teams)
 RiskLevelAggregated       - Risk assessment (low, medium, high)
 RiskState                 - Risk indicator (none, atRisk, confirmedCompromised)
@@ -45,8 +74,8 @@ ConditionalAccessStatus   - Access policy result (success, failure)
 ```
 
 **Example events:**
-- u1291 normal sign-in: Microsoft Teams from Dallas, TX, USA
-- u1291 risky sign-in: Azure Portal from Berlin, Germany (new device)
+- u2847 normal sign-in: Microsoft Teams from Dallas, TX, USA
+- u2847 risky sign-in: Azure Portal from Berlin, Germany (new device)
 - u3415 compromised: Microsoft 365 from Beijing, China (impossible travel, flagged)
 
 ### Table 2: CommonSecurity_ID_KQL_CL (IdentityDrift Events)
@@ -55,7 +84,7 @@ ConditionalAccessStatus   - Access policy result (success, failure)
 **Key columns:**
 ```
 TimeGenerated             - Event timestamp
-SourceUserName            - Identity performing action (e.g., u1291@contoso.onmicrosoft.com)
+SourceUserName            - Identity performing action (e.g., u2847@contoso.onmicrosoft.com)
 SourceIP                  - Source IP address
 DestinationHostName       - Target system (e.g., prod-aks-eastus, stgprodbackup01)
 DeviceCustomString1       - Activity type (MFA Approved, Privilege Escalation, Access Allowed)
@@ -64,8 +93,8 @@ AdditionalExtensions      - Event context (free text description)
 ```
 
 **Example events:**
-- u1291: MFA-approved access to prod-aks-eastus cluster
-- u1291: Privilege escalation detected - RoleBinding created with cluster-admin
+- u2847: MFA-approved access to prod-aks-eastus cluster
+- u2847: Privilege escalation detected - RoleBinding created with cluster-admin
 - u2847: kubectl exec on workload with known vulnerability
 - u3415: Service account accessed production backup storage
 
@@ -81,14 +110,14 @@ ActionType                       - Process action (ProcessCreated, etc.)
 FileName                         - Process name (az.exe, kubectl.exe, powershell.exe)
 ProcessCommandLine               - Full command (e.g., "az aks get-credentials --resource-group...")
 ProcessIntegrityLevel            - Elevation level (Low, Medium, High)
-AccountName                      - User running process (e.g., u1291)
+AccountName                      - User running process (e.g., u2847)
 AccountDomain                    - User domain
 InitiatingProcessFileName        - Parent process
 InitiatingProcessCommandLine     - Parent process command
 ```
 
 **Example events:**
-- u1291: az.exe login (PowerShell parent)
+- u2847: az.exe login (PowerShell parent)
 - u3415: az aks get-credentials --resource-group rg-prod --name prod-aks-eastus
 - u2847: kubectl get pods -A (elevated: High)
 
@@ -105,16 +134,16 @@ AlertType                - Alert category (K8S.NODE_MalwareBlocked, K8S.RBAC_Pri
 ConfidenceLevel          - Detection confidence (Low, Medium, High)
 IsIncident               - Whether classified as incident (true/false)
 Description              - Detailed alert description
-CompromisedEntity        - Target system/user affected (e.g., "prod-aks-eastus", "u1291@contoso.com")
+CompromisedEntity        - Target system/user affected (e.g., "prod-aks-eastus", "u2847@contoso.com")
 Entities                 - Array of affected entities with Type and Name
 ProviderName             - Detection source ("Azure Security Center", etc.)
 ```
 
 **Example alerts:**
-- **Malware execution blocked:** Kubernetes node u1291 attempted container escape (High severity, High confidence)
+- **Malware execution blocked:** Kubernetes node u2847 attempted container escape (High severity, High confidence)
 - **Privilege escalation detected:** RoleBinding created with cluster-admin permissions (High severity)
 - **Binary drift blocked:** Workload execution deviation from baseline image (Medium severity)
-- **Suspicious authentication:** u1291 accessed from impossible travel location (High confidence)
+- **Suspicious authentication:** u2847 accessed from impossible travel location (High confidence)
 
 ## Step 2: Design Your Graph Schema Based on IdentityDrift
 
@@ -125,7 +154,7 @@ ProviderName             - Detection source ("Azure Security Center", etc.)
 # Represents user accounts or service principals
 {
     "label": "Identity",
-    "id_field": "UserPrincipalName",  # u1291@contoso.onmicrosoft.com
+    "id_field": "UserPrincipalName",  # u2847@contoso.onmicrosoft.com
     "properties": {
         "LastActivity": "datetime",
         "RiskScore": "float",          # 0.0 (low) to 1.0 (high)
@@ -309,9 +338,8 @@ Graph Name: <>
 Nodes: 18
 Edges: 38
 ```
----
 
-## Step 4: Notebook Cell Breakdown
+## Step 4: Graph Notebook Cell Breakdown
 
 The notebook is organized as follows:
 

@@ -4,8 +4,6 @@ Investigate high-risk identities accessing infrastructure with critical security
 
 **Scenario:** A security analyst needs to rapidly determine what infrastructure a compromised user accessed and what critical alerts were triggered on those systems.
 
----
-
 ## Prerequisites
 
 Before you begin, ensure you have:
@@ -19,8 +17,6 @@ Before you begin, ensure you have:
 
 ### Security Copilot Setup
 - ✅ **Security Copilot Workspace** (Security Operator role to create Agents)
-
----
 
 ## What You'll Build
 
@@ -38,9 +34,7 @@ MODULE 04: Build Security Copilot Agent
 └─ Test: End-to-end investigation
 ```
 
----
-
-## Quick Start (35 minutes)
+## Quick Start
 
 ### Step 1: Build Your Graph (Module 03)
 
@@ -57,12 +51,10 @@ MODULE 04: Build Security Copilot Agent
 4. Publish the agent to your workspace
 5. Test the agent with sample question:
    ```
-   Investigate u1291@contoso.onmicrosoft.com for infrastructure access with critical alerts
+   Investigate u2847@contoso.onmicrosoft.com for infrastructure access with critical alerts
    ```
 
 **Result:** Agent returns structured investigation with infrastructure + alerts
-
----
 
 ## Understanding the System
 
@@ -70,7 +62,7 @@ MODULE 04: Build Security Copilot Agent
 
 | Node | Represents | Example |
 |------|------------|---------|
-| **Identity** | Azure AD users | u1291@contoso.onmicrosoft.com |
+| **Identity** | Azure AD users | u2847@contoso.onmicrosoft.com |
 | **Workload** | Apps and infrastructure | Azure Portal, prod-aks-eastus |
 | **Device** | Client devices | laptop-001, WIN-DESKTOP-001 |
 | **Alert** | Security detections | PrivilegeEscalation, SuspiciousActivity |
@@ -89,14 +81,14 @@ MODULE 04: Build Security Copilot Agent
 ### Investigation Workflow
 
 ```
-Question: "What infrastructure did u1291 access with critical alerts?"
+Question: "What infrastructure did u2847 access with critical alerts?"
 
 Agent receives question
   ↓
 Formulates GQL query:
   MATCH (i:Identity)-[r1:AccessedInfrastructure]->(w:Workload),
         (a:Alert)-[r2:DetectedOn]->(w)
-  WHERE i.IdentityId = 'u1291@contoso.onmicrosoft.com'
+  WHERE i.IdentityId = 'u2847@contoso.onmicrosoft.com'
     AND a.AlertSeverity IN ['High', 'Critical']
   RETURN i, r1, w, r2, a
   ↓
@@ -112,8 +104,6 @@ Agent formats investigation:
 Agent responds with findings + recommended actions
 ```
 
----
-
 ## 4 Modules at a Glance
 
 | Module | What | Output |
@@ -122,8 +112,6 @@ Agent responds with findings + recommended actions
 | **02** | Architecture & Design | Understand system design |
 | **03** | Build Custom Graph | IdentityDrift_AccessGraph instance |
 | **04** | Deploy Security Copilot Agent | Working agent in Security Copilot |
-
----
 
 ## Next Steps
 
