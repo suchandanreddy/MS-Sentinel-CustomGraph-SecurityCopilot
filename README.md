@@ -52,7 +52,6 @@ The solution is organized in **4 layers**:
 │ Layer 2: Graph Notebook & Job               │
 │ - IdentityDrift_AccessGraph.ipynb           │
 │ - Scheduled daily (configurable)            │
-│ - Transforms Sentinel telemetry             │
 └──────────────┬──────────────────────────────┘
                │ Spark DataFrame Read
 ┌──────────────▼──────────────────────────────┐
