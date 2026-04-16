@@ -9,7 +9,7 @@ Investigate high-risk identities accessing infrastructure with critical security
 ## 📋 Prerequisites
 
 - ✅ **Microsoft Sentinel** workspace with **Data Lake** enabled
-- ✅ **Source tables** from [Microsoft-Sentinel-Labs KQL-Jobs](https://github.com/suchandanreddy/Microsoft-Sentinel-Labs/tree/main/KQL-Jobs):
+- ✅ **Source tables** - [Create](https://github.com/suchandanreddy/Microsoft-Sentinel-Labs/blob/main/02-Create-KQL-Jobs.md) and [run the KQL jobs](https://github.com/suchandanreddy/Microsoft-Sentinel-Labs/tree/main/KQL-Jobs) to ingest sample data:
   - SigninLogs_ID_KQL_CL
   - CommonSecurity_ID_KQL_CL
   - DeviceProcessEvents_KQL_CL
